@@ -1,0 +1,25 @@
+{
+  "name": "aether-git-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AetherGit: Concurrent Multi-Agent Git Control Plane built on Cloudflare Workers, Durable Objects, and Cloudflare Artifacts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "test": "vitest run",
+    "typecheck": "tsc -p .",
+    "setup": "node scripts/setup.mjs",
+    "swarm": "node scripts/swarm.mjs",
+    "weave": "node scripts/weave.mjs",
+    "claude-agents": "node scripts/claude-agents.mjs",
+    "scale": "node scripts/scale.mjs",
+    "real-scale": "node scripts/real-scale.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9",
+    "wrangler": "latest"
+  }
+}

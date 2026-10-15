@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AetherGit Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --base: #08090a;
+    --elevated: #0e1011;
+    --raised: #141618;
+    --hover: #191c1f;
+    --hairline: rgba(255, 255, 255, 0.075);
+    --hairline-2: rgba(255, 255, 255, 0.12);
+    --accent: #4d9fff;
+    --accent-soft: rgba(77, 159, 255, 0.12);
+    --positive: #3fb950;
+    --positive-bar: #2fbf85;
+    --warning: #d29922;
+    --danger: #f85149;
+    --danger-bar: #e5636a;
+    --text-1: rgba(255, 255, 255, 0.92);
+    --text-2: rgba(255, 255, 255, 0.58);
+    --text-3: rgba(255, 255, 255, 0.34);
+    --rail: 228px;
+    --inspector: 360px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--base); color: var(--text-1);
+    font: 300 13px/1.45 Inter, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { background: none; border: 0; cursor: pointer; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .ix { transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease; }
+  :where(button, a, input, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+  * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 4px; }
+  a { color: inherit; text-decoration: none; }
+
+  .app { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr) var(--inspector); grid-template-rows: 100%; height: 100%; }
+
+  /* ── rail ─────────────────────────────────────────── */
+  .rail { background: var(--base); border-right: 1px solid var(--hairline); display: flex; flex-direction: column; min-height: 0; }
+  .brand { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--hairline); }
+  .mark { width: 18px; height: 18px; position: relative; }
+  .mark i { position: absolute; width: 7px; height: 7px; border: 1px solid var(--accent); border-radius: 2px; }
+  .mark i:nth-child(1) { left: 0; top: 0; } .mark i:nth-child(2) { right: 0; top: 0; opacity: .6; }
+  .mark i:nth-child(3) { left: 0; bottom: 0; opacity: .6; } .mark i:nth-child(4) { right: 0; bottom: 0; background: var(--accent); }
+  .brand b { font-weight: 400; letter-spacing: -0.01em; font-size: 14px; }
+  .brand span { color: var(--text-3); font-size: 11px; margin-left: auto; }
+  .rail-scroll { flex: 1; overflow: auto; padding: 10px 8px; }
+  .sec { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); padding: 14px 10px 6px; display: flex; align-items: center; }
+  .sec:first-child { padding-top: 4px; }
+  .nav { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px; border-radius: 6px; color: var(--text-2); text-align: left; }
+  .nav:hover { background: var(--hover); color: var(--text-1); }
+  .nav.on { background: var(--raised); color: var(--text-1); }
+  .nav.on .ico { color: var(--accent); }
+  .nav .ico { width: 15px; height: 15px; flex: none; color: var(--text-3); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--text-3); }
+  .nav .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: auto; }
+  .nav .sub { display: block; font-size: 11px; color: var(--text-3); line-height: 1.2; }
+  .rail-foot { border-top: 1px solid var(--hairline); padding: 8px; }
+
+  /* ── center ───────────────────────────────────────── */
+  .center { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr) 48px; min-width: 0; min-height: 0; border-right: 1px solid var(--hairline); }
+  .tabs { display: flex; align-items: stretch; border-bottom: 1px solid var(--hairline); min-width: 0; }
+  .tabs .ctx { display: flex; align-items: center; gap: 8px; padding: 0 14px; border-right: 1px solid var(--hairline); white-space: nowrap; }
+  .tabs .ctx .n { font-size: 10px; color: var(--text-3); border: 1px solid var(--hairline-2); border-radius: 4px; padding: 0 5px; }
+  .tab { padding: 0 14px; color: var(--text-2); border-right: 1px solid var(--hairline); position: relative; white-space: nowrap; }
+  .tab:hover { color: var(--text-1); background: var(--elevated); }
+  .tab.on { color: var(--text-1); background: var(--elevated); }
+  .tab.on::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--accent); }
+  .tabs .grow { flex: 1; }
+  .live { display: flex; align-items: center; gap: 7px; padding: 0 14px; color: var(--text-3); font-size: 11.5px; white-space: nowrap; }
+  .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--positive); }
+  .live.off i { background: var(--danger); }
+  .kbd { border: 1px solid var(--hairline-2); border-radius: 4px; padding: 0 5px; font-size: 10.5px; color: var(--text-3); }
+
+  .main { overflow: auto; padding: 10px 10px 14px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .panel { background: var(--elevated); border: 1px solid var(--hairline); border-radius: 6px; min-width: 0; }
+  .ph { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--hairline); min-height: 40px; }
+  .ph .k { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+  .ph .t { color: var(--text-1); font-size: 14px; }
+  .ph .sp { flex: 1; }
+  .pill { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; border: 1px solid; }
+  .pill.live { color: var(--positive); border-color: rgba(63,185,80,.45); }
+  .btn { border: 1px solid var(--hairline-2); border-radius: 5px; padding: 4px 10px; color: var(--text-2); font-size: 12px; }
+  .btn:hover { color: var(--text-1); background: var(--hover); }
+
+  .ticker { display: flex; overflow-x: auto; }
+  .tick { padding: 10px 16px; border-right: 1px solid var(--hairline); white-space: nowrap; min-width: 0; }
+  .tick:last-child { border-right: 0; }
+  .tick .l { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+  .tick .v { font-size: 18px; font-weight: 300; margin-top: 2px; }
+  .tick .d { font-size: 11px; color: var(--text-3); margin-left: 6px; }
+
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .grid2.wide { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+  .pb { padding: 12px 14px; }
+
+  .bars { display: grid; grid-template-columns: 120px minmax(0, 1fr) 72px; gap: 9px 12px; align-items: center; }
+  .bars .bl { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bars .track { height: 14px; position: relative; }
+  .bars .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; transition: width 700ms cubic-bezier(.16,1,.3,1); }
+  .bars .bv { text-align: right; font-size: 12.5px; }
+
+  .seg { display: inline-flex; gap: 2px; }
+  .seg button { padding: 3px 9px; border-radius: 4px; color: var(--text-3); font-size: 12px; }
+  .seg button:hover { color: var(--text-1); }
+  .seg button.on { background: var(--raised); color: var(--text-1); }
+
+  /* lock graph */
+  .lg { padding: 4px 14px 12px; }
+  .lg-file { padding-top: 10px; }
+  .lg-fname { font-size: 12px; color: var(--accent); padding-bottom: 4px; }
+  .lg-row { display: grid; grid-template-columns: minmax(120px, 210px) minmax(0, 1fr); gap: 12px; padding: 5px 0; border-top: 1px solid var(--hairline); align-items: start; }
+  .lg-sym { font-size: 12.5px; color: var(--text-1); overflow-wrap: anywhere; padding-top: 2px; }
+  .badge { display: inline-block; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: 1px; }
+  .b-t { color: var(--warning); background: rgba(210,153,34,.12); }
+  .b-v { color: var(--danger); background: rgba(248,81,73,.12); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 11.5px; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--hairline-2); background: var(--raised); color: var(--text-2); cursor: pointer; }
+  .chip:hover { color: var(--text-1); border-color: rgba(255,255,255,.22); }
+  .chip .s { color: var(--text-3); font-size: 10.5px; }
+  .chip.merged { border-color: rgba(63,185,80,.5); color: var(--text-1); }
+  .chip.merged .s { color: var(--positive); }
+  .chip.pushed { border-color: rgba(77,159,255,.5); }
+  .chip.lost { opacity: .5; text-decoration: line-through; }
+  .chip.rejected { border-color: rgba(248,81,73,.55); color: var(--text-1); }
+  .chip.rejected .s { color: var(--danger); }
+  .chip.intruder { border-style: dashed; border-color: var(--danger); }
+  .chip.expired, .chip.released { opacity: .35; }
+  .chip.sel { outline: 1px solid var(--accent); }
+
+  /* tables */
+  .tw { overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { position: sticky; top: 0; background: var(--base); z-index: 1; text-align: left; font-weight: 300; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); padding: 9px 12px; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+  th.r, td.r { text-align: right; }
+  td { padding: 7px 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; font-size: 12.5px; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover td { background: var(--hover); }
+  tbody tr.sel td { background: var(--accent-soft); }
+  tr.grp td { cursor: default; background: transparent !important; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); padding: 10px 12px 6px; }
+  tr.grp td::before { content: "• "; }
+  .muted { color: var(--text-3); }
+  .dim { color: var(--text-2); }
+  .pos { color: var(--positive); } .neg { color: var(--danger); } .warn { color: var(--warning); } .acc { color: var(--accent); }
+  .mode { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+  .m-AST_LOCK { color: var(--text-2); } .m-ORTHOGONAL_SHARED_FILE { color: var(--accent); } .m-TOURNAMENT { color: var(--warning); }
+  .st { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+  .s-active { color: var(--text-3); } .s-pushed { color: var(--accent); } .s-merged { color: var(--positive); }
+  .s-lost { color: var(--text-3); } .s-rejected { color: var(--danger); } .s-expired, .s-released { color: var(--text-3); }
+
+  .weave { padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
+  .weave:last-child { border-bottom: 0; }
+  .weave-h { display: flex; gap: 10px; align-items: baseline; margin-bottom: 8px; }
+  .wl { display: grid; grid-template-columns: 74px minmax(0, 240px) minmax(0, 1fr); gap: 2px 12px; font-size: 12px; }
+  .wl .why { color: var(--text-3); overflow-wrap: anywhere; }
+  .empty { color: var(--text-3); padding: 28px 14px; text-align: center; }
+  .skel { background: linear-gradient(var(--elevated), var(--elevated)); animation: skel 1.6s ease-in-out infinite; }
+  @keyframes skel { 50% { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+  .empty code { color: var(--text-2); }
+
+  .hot { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px 12px; align-items: center; }
+  .hot .n { text-align: right; color: var(--warning); }
+  .hot .bar { height: 2px; background: var(--warning); opacity: .55; margin-top: 4px; border-radius: 1px; transition: width 700ms cubic-bezier(.16,1,.3,1); }
+  .hot .lbl { font-size: 12px; overflow-wrap: anywhere; }
+  .subk { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
+  .trow { padding: 8px 0; border-top: 1px solid var(--hairline); }
+  .trow:first-of-type { border-top: 0; padding-top: 0; }
+  .tsym { font-size: 12.5px; overflow-wrap: anywhere; }
+
+  /* command bar */
+  .cmd { display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid var(--hairline); }
+  .cmd .tg { display: flex; border: 1px solid var(--hairline-2); border-radius: 5px; overflow: hidden; }
+  .cmd .tg span { padding: 4px 10px; font-size: 12px; color: var(--text-3); }
+  .cmd .tg span.on { background: var(--accent-soft); color: var(--accent); }
+  .cmd .ctxchip { border: 1px solid var(--hairline-2); border-radius: 5px; padding: 4px 10px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+  .cmd input { flex: 1; min-width: 0; background: var(--elevated); border: 1px solid var(--hairline-2); border-radius: 5px; padding: 6px 10px; outline: none; }
+  .cmd input::placeholder { color: var(--text-3); }
+  .cmd input:focus { border-color: rgba(77,159,255,.6); }
+  .cmd .hits { color: var(--text-3); font-size: 11.5px; white-space: nowrap; }
+
+  /* inspector */
+  .insp { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); min-height: 0; min-width: 0; background: var(--base); }
+  .insp-h { display: flex; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--hairline); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+  .insp-h .sp { flex: 1; }
+  .insp-b { overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .ititle .k { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+  .ititle .k::before { content: ""; width: 5px; height: 5px; background: var(--accent); transform: rotate(45deg); }
+  .ititle .t { font-size: 15px; margin-top: 2px; overflow-wrap: anywhere; }
+  .ititle .s { font-size: 11.5px; color: var(--text-3); margin-top: 1px; overflow-wrap: anywhere; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tile { background: var(--elevated); border: 1px solid var(--hairline); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+  .tile .l { font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+  .tile .v { font-size: 15px; margin-top: 1px; overflow-wrap: anywhere; }
+  .tile .x { font-size: 10.5px; color: var(--text-3); }
+  .card { background: var(--elevated); border: 1px solid var(--hairline); border-radius: 6px; padding: 10px 12px; }
+  .card h4 { font-weight: 300; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .card p { color: var(--text-2); font-size: 12.5px; line-height: 1.6; }
+  .card p + p { margin-top: 6px; }
+  .card p b { font-weight: 300; color: var(--text-1); }
+  .kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 10px; font-size: 12px; }
+  .kv dt { color: var(--text-3); }
+  .kv dd { overflow-wrap: anywhere; }
+  .ev { padding: 7px 0; border-top: 1px solid var(--hairline); font-size: 12px; }
+  .ev:first-of-type { border-top: 0; }
+  .ev .top { display: flex; gap: 8px; align-items: baseline; color: var(--text-3); font-size: 11px; }
+  .ev .ty { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+  .ev .ty.push { color: var(--accent); } .ev .ty.weave { color: var(--positive); } .ev .ty.claim { color: var(--text-2); } .ev .ty.bad { color: var(--danger); }
+  .ev .d { color: var(--text-2); margin-top: 1px; overflow-wrap: anywhere; }
+  .link { color: var(--accent); cursor: pointer; }
+  .link:hover { text-decoration: underline; }
+
+  @media (max-width: 1280px) { :root { --inspector: 310px; --rail: 196px; } }
+  @media (max-width: 1080px) {
+    body { overflow: auto; }
+    .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; height: auto; }
+    .rail { display: none; }
+    .center { grid-template-rows: 40px auto 48px; border-right: 0; }
+    .main { overflow: visible; }
+    .insp { grid-template-rows: 40px auto; border-top: 1px solid var(--hairline); }
+    .grid2, .grid2.wide { grid-template-columns: minmax(0, 1fr); }
+    .tabs { overflow-x: auto; }
+  }
+  @media (max-width: 560px) {
+    .main { padding: 8px; }
+    .bars { grid-template-columns: 92px minmax(0, 1fr) 56px; }
+    .lg-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .wl { grid-template-columns: 64px minmax(0, 1fr); }
+    .wl .why { grid-column: 2; }
+    .cmd .ctxchip, .cmd .tg { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bars .fill, .hot .bar { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ───────── rail ───────── -->
+  <aside class="rail" aria-label="Navigation">
+    <div class="brand"><div class="mark"><i></i><i></i><i></i><i></i></div><b>AetherGit</b><span>control plane</span></div>
+    <div class="rail-scroll">
+      <div class="sec">Baselines</div>
+      <div id="baselines"></div>
+      <div class="sec">Views</div>
+      <div id="views"></div>
+    </div>
+    <div class="rail-foot">
+      <a class="nav ix" href="https://github.com/Boodna/aether-git" target="_blank" rel="noopener">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M6 13c-3 1-3-1.5-4.5-2M10.5 14.5v-2.6c0-.8.1-1.2-.4-1.6 1.8-.2 3.6-.9 3.6-3.9 0-.8-.3-1.6-.8-2.2.1-.6.1-1.3-.1-2.1 0 0-.7-.2-2.2.8a7.5 7.5 0 0 0-4 0C5.1 1.9 4.4 2.1 4.4 2.1c-.2.8-.2 1.5-.1 2.1-.5.6-.8 1.4-.8 2.2 0 3 1.8 3.7 3.6 3.9-.4.3-.5.8-.5 1.4v2.8"/></svg>
+        Source
+      </a>
+      <a class="nav ix" href="https://github.com/Boodna/aether-git#run-it" target="_blank" rel="noopener">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 2.5h7l3 3v8H3z M10 2.5v3h3 M5.5 8.5h5 M5.5 11h5"/></svg>
+        Docs &amp; API
+      </a>
+    </div>
+  </aside>
+
+  <!-- ───────── center ───────── -->
+  <section class="center">
+    <nav class="tabs" aria-label="Views">
+      <div class="ctx"><span id="ctxName">core-platform</span><span class="n" id="ctxShards">–</span></div>
+      <div id="tabbar" style="display:flex"></div>
+      <div class="grow"></div>
+      <div class="live" id="live"><i></i><span id="liveTxt">connecting</span><span class="kbd">/</span></div>
+    </nav>
+
+    <main class="main" id="main"></main>
+
+    <div class="cmd">
+      <div class="tg"><span class="on">Find</span></div>
+      <div class="ctxchip" id="cmdCtx">Mission Control</div>
+      <input id="find" type="search" placeholder="Filter agents, forks, files and symbols…  (press / to focus)" autocomplete="off" spellcheck="false" />
+      <div class="hits" id="hits"></div>
+    </div>
+  </section>
+
+  <!-- ───────── inspector ───────── -->
+  <aside class="insp" aria-label="Inspector">
+    <div class="insp-h"><span>Inspector</span><span class="sp"></span><button class="btn ix" id="clearSel" style="display:none;padding:2px 8px;font-size:11px">Clear</button></div>
+    <div class="insp-b" id="insp"></div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const BASELINES = [
+    { id: "core-platform", label: "core-platform", sub: "Demo swarm · 9 agents" },
+    { id: "scale-real", label: "scale-real", sub: "1,000 real forks" },
+    { id: "scale-test", label: "scale-test", sub: "Lease-plane load test" },
+  ];
+  const VIEWS = [
+    { id: "overview", label: "Overview", icon: '<path d="M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z"/>' },
+    { id: "graph", label: "Lock graph", icon: '<circle cx="4" cy="4" r="1.6"/><circle cx="12" cy="4" r="1.6"/><circle cx="8" cy="12" r="1.6"/><path d="M5.3 5l2 5.5M10.7 5l-2 5.5M5.6 4h4.8"/>' },
+    { id: "agents", label: "Agents", icon: '<circle cx="8" cy="5.5" r="2.5"/><path d="M3 13.5c.8-2.6 2.7-3.8 5-3.8s4.2 1.2 5 3.8"/>' },
+    { id: "weaves", label: "Weaves", icon: '<path d="M2.5 4.5c3 0 3 7 6 7s2.5-7 5-7M2.5 11.5c3 0 3-7 6-7"/>' },
+  ];
+
+  const qs = new URLSearchParams(location.search);
+  const S = {
+    baseline: qs.get("baseline") || "core-platform",
+    view: qs.get("view") || "overview",
+    sel: null, // forkRepo
+    find: "",
+    data: null,
+    sig: "",
+    ok: true,
+  };
+  if (!BASELINES.some((b) => b.id === S.baseline)) BASELINES.push({ id: S.baseline, label: S.baseline, sub: "custom baseline" });
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const fmt = (n) => Number(n || 0).toLocaleString();
+  const pct = (a, b) => (b ? ((100 * a) / b).toFixed(a === b || a === 0 ? 0 : 1) + "%" : "–");
+  const short = (s) => esc(String(s ?? "").slice(0, 8));
+  const split = (id) => { const i = String(id).lastIndexOf("#"); return i < 0 ? { file: id, symbol: "*" } : { file: id.slice(0, i), symbol: id.slice(i + 1) }; };
+  const ago = (ts) => { const s = Math.max(0, Math.round((Date.now() - ts) / 1000)); return s < 60 ? s + "s ago" : s < 3600 ? Math.round(s / 60) + "m ago" : s < 86400 ? Math.round(s / 3600) + "h ago" : Math.round(s / 86400) + "d ago"; };
+  const time = (ts) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const modeLabel = (m) => (m === "ORTHOGONAL_SHARED_FILE" ? "Orthogonal" : m === "TOURNAMENT" ? "Tournament" : "AST lock");
+
+  function syncUrl() {
+    const p = new URLSearchParams();
+    if (S.baseline !== "core-platform") p.set("baseline", S.baseline);
+    if (S.view !== "overview") p.set("view", S.view);
+    history.replaceState(null, "", location.pathname + (p.toString() ? "?" + p : ""));
+  }
+
+  /* ── filtering ── */
+  function matches(l) {
+    if (!S.find) return true;
+    const q = S.find.toLowerCase();
+    return [l.agentId, l.forkRepo, l.status, l.mode, l.taskIntent, ...(l.symbols || []), ...((l.analysis && l.analysis.touchedSymbols) || [])]
+      .some((x) => String(x || "").toLowerCase().includes(q));
+  }
+
+  /* ── chrome ── */
+  function renderRail() {
+    const counts = S.data?.counts || {};
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    $("baselines").innerHTML = BASELINES.map((b) => `
+      <button class="nav ix ${b.id === S.baseline ? "on" : ""}" data-baseline="${esc(b.id)}">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 2.5v11M4 5.5h5a2.5 2.5 0 0 0 2.5-2.5M4 10.5h5a2.5 2.5 0 0 1 2.5 2.5"/><circle cx="11.5" cy="3" r="1"/><circle cx="11.5" cy="13" r="1"/></svg>
+        <span style="min-width:0"><span>${esc(b.label)}</span><span class="sub">${esc(b.sub)}</span></span>
+        ${b.id === S.baseline && total ? `<span class="meta tnum">${fmt(total)}</span>` : ""}
+      </button>`).join("");
+    $("views").innerHTML = VIEWS.map((v) => `
+      <button class="nav ix ${v.id === S.view ? "on" : ""}" data-view="${v.id}">
+        <svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">${v.icon}</svg>${esc(v.label)}
+      </button>`).join("");
+    $("tabbar").innerHTML = VIEWS.map((v) => `<button class="tab ix ${v.id === S.view ? "on" : ""}" data-view="${v.id}">${esc(v.label)}</button>`).join("");
+    $("ctxName").textContent = S.baseline;
+    $("cmdCtx").textContent = `Mission Control · ${S.baseline}`;
+    const sh = S.data?.shards;
+    $("ctxShards").textContent = sh ? `${sh.symbol}+${sh.lease} shards` : "–";
+  }
+
+  /* ── blocks ── */
+  function ticker(d) {
+    const c = d.counts || {};
+    const total = Object.values(c).reduce((a, b) => a + b, 0);
+    const sy = d.symbols || {};
+    const settled = (c.merged || 0) + (c.lost || 0) + (c.rejected || 0);
+    const items = [
+      ["Agents", fmt(total), "", ""],
+      ["Live leases", fmt((c.active || 0) + (c.pushed || 0)), "", ""],
+      ["Live symbols", fmt(sy.live), "", sy.files ? `${fmt(sy.files)} files` : ""],
+      ["Contested", fmt(sy.contested), sy.contested ? "warn" : "", sy.live ? pct(sy.contested, sy.live) : ""],
+      ["Merged", fmt(c.merged), c.merged ? "pos" : "", settled ? pct(c.merged || 0, settled) : ""],
+      ["Lost tournament", fmt(c.lost), "", ""],
+      ["Rejected", fmt(c.rejected), c.rejected ? "neg" : "", ""],
+      ["Weaves", fmt((d.weaves || []).length), "", ""],
+    ];
+    return `<div class="panel"><div class="ticker">${items.map(([l, v, cls, x]) => `<div class="tick"><div class="l">${esc(l)}</div><div class="v tnum ${cls}">${v}<span class="d">${esc(x)}</span></div></div>`).join("")}</div></div>`;
+  }
+
+  function bars(rows) {
+    const max = Math.max(1, ...rows.map((r) => r.n));
+    return `<div class="bars">${rows.map((r) => `
+      <div class="bl" title="${esc(r.label)}">${esc(r.label)}</div>
+      <div class="track"><div class="fill" style="width:${(100 * r.n) / max}%;background:${r.color};opacity:${r.n ? 1 : 0}"></div></div>
+      <div class="bv tnum" style="color:${r.n ? r.text || "var(--text-1)" : "var(--text-3)"}">${fmt(r.n)}</div>`).join("")}</div>`;
+  }
+
+  function outcomesPanel(d) {
+    const c = d.counts || {};
+    return `<div class="panel"><div class="ph"><span class="k">Lease outcomes</span><span class="sp"></span><span class="muted" style="font-size:11.5px">derived from git objects</span></div>
+      <div class="pb">${bars([
+        { label: "Merged", n: c.merged || 0, color: "var(--positive-bar)", text: "var(--positive)" },
+        { label: "Pushed · pending", n: c.pushed || 0, color: "var(--accent)", text: "var(--accent)" },
+        { label: "Active · editing", n: c.active || 0, color: "rgba(255,255,255,.28)" },
+        { label: "Lost tournament", n: c.lost || 0, color: "rgba(255,255,255,.16)", text: "var(--text-2)" },
+        { label: "Rejected", n: c.rejected || 0, color: "var(--danger-bar)", text: "var(--danger)" },
+        { label: "Expired", n: (c.expired || 0) + (c.released || 0), color: "rgba(255,255,255,.1)", text: "var(--text-3)" },
+      ])}</div></div>`;
+  }
+
+  function modesPanel(d) {
+    const m = d.modes || {};
+    return `<div class="panel"><div class="ph"><span class="k">Contention</span><span class="sp"></span><span class="muted" style="font-size:11.5px">how each lease was classified</span></div>
+      <div class="pb">${bars([
+        { label: "AST lock", n: m.AST_LOCK || 0, color: "rgba(255,255,255,.32)" },
+        { label: "Orthogonal", n: m.ORTHOGONAL_SHARED_FILE || 0, color: "var(--accent)", text: "var(--accent)" },
+        { label: "Tournament", n: m.TOURNAMENT || 0, color: "var(--warning)", text: "var(--warning)" },
+      ])}
+      <p class="muted" style="font-size:11.5px;margin-top:12px;line-height:1.55">Exclusive owners proceed alone. Orthogonal agents share a file but not a symbol and are woven per symbol. Tournament agents race on the same symbol and the cleanest honest change wins. No lease ever blocks.</p>
+      </div></div>`;
+  }
+
+  function hotPanel(d, limit = 8) {
+    const hot = (d.symbols?.hot || []).slice(0, limit);
+    const max = Math.max(1, ...hot.map((h) => h.n));
+    const live = hot.length
+      ? `<div class="hot">${hot.map((h) => `<div class="n tnum">${fmt(h.n)}</div><div class="lbl"><span class="dim">${esc(h.file)}#</span>${esc(h.symbol)}<div class="bar" style="width:${(100 * h.n) / max}%"></div></div>`).join("")}</div>`
+      : "";
+
+    // Decided tournaments, reconstructed from the loaded leases: every symbol that more than one
+    // agent leased, who entered, and who (if anyone) was woven in.
+    const bySym = new Map();
+    for (const l of d.leases) {
+      for (const sid of l.symbols || []) {
+        if (!bySym.has(sid)) bySym.set(sid, []);
+        bySym.get(sid).push(l);
+      }
+    }
+    const decided = [...bySym]
+      .filter(([, ls]) => ls.length > 1 && ls.some((l) => ["merged", "lost", "rejected"].includes(l.status)))
+      .sort((x, y) => y[1].length - x[1].length)
+      .slice(0, limit);
+    const rows = decided.map(([sid, ls]) => {
+      const { file, symbol } = split(sid);
+      const winner = ls.find((l) => l.status === "merged");
+      const ranked = [...ls].sort((x, y) => (y.score ?? -1) - (x.score ?? -1));
+      return `<div class="trow"><div class="tsym"><span class="dim">${esc(file)}#</span>${esc(symbol)}<span class="muted tnum"> · ${ls.length} entrants</span></div>
+        <div class="chips" style="margin-top:5px">${ranked.map((l) => `<span class="chip ix ${esc(l.status)} ${S.sel === l.forkRepo ? "sel" : ""}" data-sel="${esc(l.forkRepo)}">${l === winner ? "★ " : ""}${esc(l.agentId)}${l.score != null ? `<span class="s tnum">${esc(l.score)}</span>` : ""}</span>`).join("")}</div></div>`;
+    }).join("");
+
+    let body = "";
+    if (live) body += `<div class="subk">Live · claimants per symbol</div>${live}`;
+    if (rows) body += `<div class="subk" style="${live ? "margin-top:16px" : ""}">Decided · cleanest honest change wins</div>${rows}`;
+    if (!body) body = `<div class="empty" style="padding:16px">No contested symbols yet.</div>`;
+    return `<div class="panel"><div class="ph"><span class="k">Tournaments</span><span class="sp"></span><span class="muted" style="font-size:11.5px">one winner per symbol</span></div><div class="pb" data-scroll="t" style="max-height:420px;overflow:auto">${body}</div></div>`;
+  }
+
+  function lockGraph(d, limitFiles) {
+    const files = new Map();
+    const put = (id, l, kind) => {
+      const { file, symbol } = split(id);
+      if (!files.has(file)) files.set(file, new Map());
+      const m = files.get(file);
+      if (!m.has(symbol)) m.set(symbol, []);
+      if (!m.get(symbol).some((x) => x.l.forkRepo === l.forkRepo)) m.get(symbol).push({ l, kind });
+    };
+    for (const l of d.leases.filter(matches)) {
+      (l.symbols || []).forEach((s) => put(s, l, "lease"));
+      ((l.analysis && l.analysis.violations) || []).forEach((s) => put(s, l, "intruder"));
+    }
+    if (!files.size) return `<div class="empty">${S.find ? "Nothing matches this filter." : "No leases yet. Run <code>npm run swarm</code>."}</div>`;
+    let list = [...files].sort((a, b) => a[0].localeCompare(b[0]));
+    const more = limitFiles && list.length > limitFiles ? list.length - limitFiles : 0;
+    if (limitFiles) list = list.slice(0, limitFiles);
+    return `<div class="lg">${list.map(([file, syms]) => `
+      <div class="lg-file"><div class="lg-fname">${esc(file)}</div>
+      ${[...syms].sort((a, b) => a[0].localeCompare(b[0])).map(([s, holders]) => {
+        const live = holders.filter((h) => h.kind === "lease");
+        const intr = holders.some((h) => h.kind === "intruder");
+        return `<div class="lg-row"><div class="lg-sym">${esc(s)}${live.length > 1 ? `<span class="badge b-t">Tournament ×${live.length}</span>` : ""}${intr ? `<span class="badge b-v">Violation</span>` : ""}</div>
+          <div class="chips">${holders.map(({ l, kind }) => `<span class="chip ix ${esc(l.status)} ${kind === "intruder" ? "intruder" : ""} ${S.sel === l.forkRepo ? "sel" : ""}" data-sel="${esc(l.forkRepo)}" title="${esc(l.forkRepo)} · ${esc(l.status)}${kind === "intruder" ? " · edited without a lease" : ""}">${esc(l.agentId)}${l.score != null ? `<span class="s tnum">${esc(l.score)}</span>` : ""}</span>`).join("")}</div></div>`;
+      }).join("")}</div>`).join("")}
+      ${more ? `<div class="muted" style="padding:12px 0 2px;font-size:11.5px">+ ${fmt(more)} more files · open the Lock graph view or filter below</div>` : ""}</div>`;
+  }
+
+  const ORDER = ["rejected", "pushed", "active", "merged", "lost", "expired", "released"];
+  function agentsTable(d, limit) {
+    let rows = d.leases.filter(matches);
+    const total = rows.length;
+    if (!total) return `<div class="empty">${S.find ? "No agents match this filter." : "No agents yet."}</div>`;
+    rows = rows.sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || (b.score ?? -1) - (a.score ?? -1));
+    if (limit) rows = rows.slice(0, limit);
+    let last = null;
+    const out = [];
+    for (const l of rows) {
+      if (l.status !== last) {
+        last = l.status;
+        const n = d.leases.filter((x) => x.status === l.status && matches(x)).length;
+        out.push(`<tr class="grp"><td colspan="7">${esc(l.status)} · ${fmt(n)}</td></tr>`);
+      }
+      const a = l.analysis;
+      const touched = a ? a.touchedSymbols.map((t) => `<div class="${a.violations.includes(t) ? "neg" : ""}">${esc(split(t).symbol)}</div>`).join("") || '<span class="muted">nothing</span>' : '<span class="muted">—</span>';
+      const prov = !a ? '<span class="muted">—</span>' : a.provenanceHonest === true ? '<span class="pos">honest</span>' : a.provenanceHonest === false ? '<span class="neg">mismatch</span>' : '<span class="muted">none</span>';
+      out.push(`<tr class="${S.sel === l.forkRepo ? "sel" : ""}" data-sel="${esc(l.forkRepo)}">
+        <td><div>${esc(l.agentId)}</div><div class="muted" style="font-size:11px">${esc(l.forkRepo)}${l.latestCommit ? " @ " + short(l.latestCommit) : ""}</div></td>
+        <td><span class="mode m-${esc(l.mode)}">${modeLabel(l.mode)}</span></td>
+        <td><span class="st s-${esc(l.status)}">${esc(l.status)}</span></td>
+        <td class="dim">${(l.symbols || []).map((s) => `<div>${esc(split(s).symbol)}</div>`).join("")}</td>
+        <td>${touched}</td>
+        <td>${prov}</td>
+        <td class="r tnum">${l.score != null ? esc(l.score) : '<span class="muted">—</span>'}</td></tr>`);
+    }
+    return `<div class="tw"><table><thead><tr><th>Agent · fork</th><th>Mode</th><th>Status</th><th>Leased</th><th>Actually touched</th><th>Provenance</th><th class="r">Score</th></tr></thead><tbody>${out.join("")}</tbody></table></div>
+      ${limit && total > limit ? `<div class="muted" style="padding:10px 12px;font-size:11.5px">Showing ${fmt(limit)} of ${fmt(total)} · open the Agents view for all</div>` : ""}`;
+  }
+
+  function weavesList(d, limit) {
+    const ws = (d.weaves || []).slice(0, limit || 50);
+    if (!ws.length) return `<div class="empty">No weaves yet. Run <code>npm run weave</code>.</div>`;
+    return ws.map((w) => {
+      const s = w.summary || { merged: [], lost: [], rejected: [] };
+      const cap = (arr) => (limit ? arr.slice(0, 6) : arr);
+      const extra = limit ? Math.max(0, s.merged.length - 6) + Math.max(0, s.lost.length - 6) + Math.max(0, s.rejected.length - 6) : 0;
+      return `<div class="weave"><div class="weave-h"><span class="tnum">${short(w.baseline_sha)} → <span class="pos">${short(w.result_sha)}</span></span>
+        <span class="muted" style="font-size:11.5px">${esc(ago(w.ts))}</span><span class="sp" style="flex:1"></span>
+        <span class="tnum" style="font-size:11.5px"><span class="pos">${s.merged.length} merged</span> · <span class="dim">${s.lost.length} lost</span> · <span class="${s.rejected.length ? "neg" : "muted"}">${s.rejected.length} rejected</span></span></div>
+        <div class="wl">
+          ${cap(s.merged).map((f) => `<span class="pos">merged</span><span class="link" data-sel="${esc(f)}">${esc(f)}</span><span></span>`).join("")}
+          ${cap(s.lost).map((f) => `<span class="muted">lost</span><span class="link" data-sel="${esc(f.forkRepo)}">${esc(f.forkRepo)}</span><span class="why">${esc(f.reason)}</span>`).join("")}
+          ${cap(s.rejected).map((f) => `<span class="neg">rejected</span><span class="link" data-sel="${esc(f.forkRepo)}">${esc(f.forkRepo)}</span><span class="why">${esc(f.reason)}</span>`).join("")}
+        </div>${extra ? `<div class="muted" style="font-size:11.5px;margin-top:6px">+ ${fmt(extra)} more in this weave</div>` : ""}</div>`;
+    }).join("");
+  }
+
+  function header(title, sub) {
+    return `<div class="panel"><div class="ph"><span class="k">${esc(sub)}</span><span class="t">${esc(title)}</span>
+      ${S.ok ? '<span class="pill live">Live</span>' : ""}<span class="sp"></span>
+      <button class="btn ix" data-action="refresh">Refresh</button></div></div>`;
+  }
+
+  /* ── views ── */
+  function renderMain() {
+    const d = S.data;
+    const main = $("main");
+    if (!d) {
+      const sk = (h) => `<div class="panel skel" style="height:${h}px"></div>`;
+      main.innerHTML = `<div class="panel"><div class="ph"><span class="k">Baseline ${esc(S.baseline)}</span><span class="t">Loading</span><span class="sp"></span><span class="muted" style="font-size:11.5px">reading 64 shards…</span></div></div>${sk(64)}<div class="grid2">${sk(220)}${sk(220)}</div><div class="grid2">${sk(320)}${sk(320)}</div>`;
+      return;
+    }
+    const keep = [...main.querySelectorAll("[data-scroll]")].map((el) => [el.dataset.scroll, el.scrollTop]);
+    const mainTop = main.scrollTop;
+    let html = "";
+    if (S.view === "overview") {
+      html = header("Swarm overview", "Baseline " + S.baseline) + ticker(d) +
+        `<div class="grid2">${outcomesPanel(d)}${modesPanel(d)}</div>
+         <div class="grid2 wide"><div class="panel"><div class="ph"><span class="k">Symbol lock graph</span><span class="sp"></span><button class="btn ix" data-view="graph">Open</button></div><div data-scroll="g" style="max-height:420px;overflow:auto">${lockGraph(d, 12)}</div></div>${hotPanel(d)}</div>
+         <div class="panel"><div class="ph"><span class="k">Agents</span><span class="sp"></span><span class="muted" style="font-size:11.5px">every column is derived from the pushed git objects, not from agent claims</span></div><div data-scroll="a" style="max-height:440px;overflow:auto">${agentsTable(d, 60)}</div></div>
+         <div class="panel"><div class="ph"><span class="k">Latest weaves</span><span class="sp"></span><button class="btn ix" data-view="weaves">All weaves</button></div>${weavesList(d, 2)}</div>`;
+    } else if (S.view === "graph") {
+      html = header("Symbol lock graph", "Leases by AST unit") +
+        `<div class="panel"><div class="ph"><span class="k">Legend</span>
+          <span class="chip merged" style="cursor:default">merged</span><span class="chip pushed" style="cursor:default">pushed</span>
+          <span class="chip lost" style="cursor:default">lost</span><span class="chip rejected" style="cursor:default">rejected</span>
+          <span class="chip intruder" style="cursor:default">edited without lease</span></div>${lockGraph(d)}</div>`;
+    } else if (S.view === "agents") {
+      html = header("Agents", "One Artifacts fork each") + ticker(d) + `<div class="panel">${agentsTable(d)}</div>`;
+    } else if (S.view === "weaves") {
+      html = header("Semantic weaves", "Committed to the baseline") + `<div class="panel">${weavesList(d)}</div>`;
+    }
+    main.innerHTML = html;
+    main.scrollTop = mainTop;
+    for (const [k, top] of keep) { const el = main.querySelector(`[data-scroll="${k}"]`); if (el) el.scrollTop = top; }
+    const n = d.leases.filter(matches).length;
+    $("hits").textContent = S.find ? `${fmt(n)} of ${fmt(d.leases.length)} loaded` : `${fmt(d.leases.length)} most recent loaded`;
+  }
+
+  /* ── inspector ── */
+  function narrative(d) {
+    const c = d.counts || {};
+    const total = Object.values(c).reduce((a, b) => a + b, 0);
+    if (!total) return `<div class="card"><h4>Waiting</h4><p>No agents have claimed leases on <b>${esc(S.baseline)}</b> yet.</p></div>`;
+    const m = d.modes || {};
+    const settled = (c.merged || 0) + (c.lost || 0) + (c.rejected || 0);
+    const pushedEver = settled + (c.pushed || 0);
+    const viol = d.leases.filter((l) => l.analysis && l.analysis.violations.length).length;
+    const liars = d.leases.filter((l) => l.analysis && l.analysis.provenanceHonest === false).length;
+    const hot = (d.symbols?.hot || [])[0];
+    const p = [];
+    const forkless = d.leases.length && d.leases.every((l) => !l.remote);
+    const where = forkless
+      ? "as a lease-plane load test: real claims against the sharded Durable Objects, without per-agent Artifacts forks"
+      : "each in its own Artifacts fork";
+    p.push(`<b>${fmt(total)}</b> agents have claimed leases on <b>${esc(S.baseline)}</b>, ${where}. <b>${fmt(m.TOURNAMENT || 0)}</b> ${m.TOURNAMENT === 1 ? "is" : "are"} racing on a contested symbol, <b>${fmt(m.ORTHOGONAL_SHARED_FILE || 0)}</b> share a file but not a symbol, and <b>${fmt(m.AST_LOCK || 0)}</b> work alone.`);
+    if (settled) p.push(`Of <b>${fmt(settled)}</b> settled leases, <span class="pos">${fmt(c.merged || 0)}</span> were woven into the baseline across <b>${fmt((d.weaves || []).length)}</b> weave${(d.weaves || []).length === 1 ? "" : "s"}, ${fmt(c.lost || 0)} lost a tournament, and <span class="${c.rejected ? "neg" : ""}">${fmt(c.rejected || 0)}</span> were rejected.`);
+    else if (pushedEver) p.push(`<b>${fmt(c.pushed || 0)}</b> pushes are analysed and waiting for the next weave.`);
+    const trust = [];
+    if (viol) trust.push(`<span class="neg">${fmt(viol)}</span> push${viol === 1 ? "" : "es"} edited symbols outside ${viol === 1 ? "its" : "their"} lease`);
+    if (liars) trust.push(`<span class="neg">${fmt(liars)}</span> provenance manifest${liars === 1 ? "" : "s"} misreported what changed`);
+    const trustText = trust.length ? `In the loaded window, ${trust.join(" and ")}. Both were detected from the git objects, not reported by the agents.` : `No lease violations or dishonest manifests in the loaded window.`;
+    const hotText = hot ? `The hottest symbol is <b>${esc(hot.symbol)}</b> in <b>${esc(hot.file)}</b> with <span class="warn">${fmt(hot.n)}</span> live claimants. Joining it costs the same as joining an idle function, because collision checks read per-symbol counters.` : "";
+    return `<div class="card"><h4>Swarm</h4><p>${p.join("</p><p>")}</p></div>
+      <div class="card"><h4>Trust</h4><p>${trustText}</p></div>
+      ${hotText ? `<div class="card"><h4>Contention</h4><p>${hotText}</p></div>` : ""}`;
+  }
+
+  function eventsCard(d) {
+    const evs = (d.events || []).slice(0, 40);
+    const cls = (t) => (t.startsWith("push") ? "push" : t.startsWith("weave") ? "weave" : t.includes("expired") ? "bad" : "claim");
+    return `<div class="card"><h4>Event stream</h4>${evs.length ? evs.map((e) => `<div class="ev"><div class="top"><span class="tnum">${esc(time(e.ts))}</span><span class="ty ${cls(e.type)}">${esc(e.type)}</span></div><div class="d">${/VIOLATION/.test(e.detail) ? `<span class="neg">${esc(e.detail)}</span>` : esc(e.detail)}</div></div>`).join("") : '<p>No events yet.</p>'}</div>`;
+  }
+
+  function renderInspector() {
+    const d = S.data;
+    const el = $("insp");
+    const top = el.scrollTop;
+    $("clearSel").style.display = S.sel ? "" : "none";
+    if (!d) { el.innerHTML = ""; return; }
+    const l = S.sel && d.leases.find((x) => x.forkRepo === S.sel);
+    if (l) {
+      const a = l.analysis;
+      const verdict = l.status === "rejected" ? "neg" : l.status === "merged" ? "pos" : l.status === "lost" ? "dim" : "acc";
+      el.innerHTML = `
+        <div class="ititle"><div class="k">Agent</div><div class="t">${esc(l.agentId)}</div><div class="s">${esc(l.forkRepo)}</div></div>
+        <div class="tiles">
+          <div class="tile"><div class="l">Status</div><div class="v ${verdict}">${esc(l.status)}</div></div>
+          <div class="tile"><div class="l">Score</div><div class="v tnum">${l.score != null ? esc(l.score) : "—"}</div></div>
+          <div class="tile"><div class="l">Mode</div><div class="v"><span class="mode m-${esc(l.mode)}" style="font-size:12px">${modeLabel(l.mode)}</span></div></div>
+          <div class="tile"><div class="l">Provenance</div><div class="v ${!a ? "" : a.provenanceHonest === false ? "neg" : a.provenanceHonest ? "pos" : "dim"}">${!a ? "—" : a.provenanceHonest === false ? "mismatch" : a.provenanceHonest ? "honest" : "none"}</div></div>
+        </div>
+        <div class="card"><h4>Intent</h4><p>${esc(l.taskIntent)}</p></div>
+        <div class="card"><h4>Lease vs reality</h4><dl class="kv">
+          <dt>Leased</dt><dd>${(l.symbols || []).map(esc).join("<br>")}</dd>
+          <dt>Touched</dt><dd>${a ? (a.touchedSymbols.map((t) => `<span class="${a.violations.includes(t) ? "neg" : ""}">${esc(t)}</span>`).join("<br>") || '<span class="muted">nothing</span>') : '<span class="muted">not pushed yet</span>'}</dd>
+          ${a && a.violations.length ? `<dt>Violations</dt><dd class="neg">${a.violations.map(esc).join("<br>")}</dd>` : ""}
+          ${a && a.provenance && a.provenance.symbolsModified ? `<dt>Declared</dt><dd class="${a.provenanceHonest === false ? "neg" : "dim"}">${a.provenance.symbolsModified.map(esc).join("<br>")}</dd>` : ""}
+        </dl></div>
+        ${a ? `<div class="card"><h4>Push analysis</h4><dl class="kv">
+          <dt>Commit</dt><dd class="tnum">${esc(a.commitSha.slice(0, 12))}</dd>
+          <dt>Message</dt><dd>${esc(a.message)}</dd>
+          <dt>Files</dt><dd>${a.changedFiles.map(esc).join("<br>") || "—"}</dd>
+          <dt>Diff</dt><dd class="tnum">${fmt(a.linesChanged)} lines · ${fmt(a.touchedSymbols.length)} symbol${a.touchedSymbols.length === 1 ? "" : "s"}</dd>
+          <dt>Syntax</dt><dd class="${a.syntaxErrors ? "neg" : "pos"}">${a.syntaxErrors ? fmt(a.syntaxErrors) + " new error(s)" : "parses clean"}</dd>
+        </dl><p class="muted" style="font-size:11.5px;margin-top:8px">Computed by the Worker from <code>readTree</code> and <code>readFile</code> on the fork, then a TypeScript AST diff against the fork's base commit.</p></div>` : ""}
+        <div class="card"><h4>Fork</h4><dl class="kv">
+          <dt>Base</dt><dd class="tnum">${esc(String(l.baseSha).slice(0, 12))}</dd>
+          <dt>Claimed</dt><dd>${esc(ago(l.createdAt))}</dd>
+          ${l.remote ? `<dt>Remote</dt><dd class="muted" style="font-size:11px">${esc(l.remote)}</dd>` : `<dt>Remote</dt><dd class="muted">forkless (load test)</dd>`}
+        </dl></div>`;
+    } else {
+      const c = d.counts || {};
+      const total = Object.values(c).reduce((x, y) => x + y, 0);
+      const settled = (c.merged || 0) + (c.lost || 0) + (c.rejected || 0);
+      const analysed = d.leases.filter((x) => x.analysis);
+      const compliant = analysed.filter((x) => !x.analysis.violations.length).length;
+      const scored = d.leases.filter((x) => x.score != null);
+      const avg = scored.length ? scored.reduce((s, x) => s + x.score, 0) / scored.length : null;
+      el.innerHTML = `
+        <div class="ititle"><div class="k">Analysis</div><div class="t">Swarm health</div><div class="s">${esc(S.baseline)} · ${S.data ? "updated " + esc(time(Date.now())) : ""}</div></div>
+        <div class="tiles">
+          <div class="tile"><div class="l">Weave yield</div><div class="v tnum ${c.merged ? "pos" : ""}">${settled ? pct(c.merged || 0, settled) : "—"}</div><div class="x">merged / settled</div></div>
+          <div class="tile"><div class="l">Lease compliance</div><div class="v tnum ${analysed.length && compliant < analysed.length ? "warn" : analysed.length ? "pos" : ""}">${analysed.length ? pct(compliant, analysed.length) : "—"}</div><div class="x">of ${fmt(analysed.length)} analysed</div></div>
+          <div class="tile"><div class="l">Tournament share</div><div class="v tnum warn">${total ? pct((d.modes || {}).TOURNAMENT || 0, total) : "—"}</div><div class="x">leases on contested symbols</div></div>
+          <div class="tile"><div class="l">Mean score</div><div class="v tnum">${avg != null ? avg.toFixed(1) : "—"}</div><div class="x">of ${fmt(scored.length)} scored</div></div>
+        </div>
+        ${narrative(d)}
+        ${eventsCard(d)}
+        <p class="muted" style="font-size:11px;padding:0 2px">Select any agent, chip or weave entry for its forensic record.</p>`;
+    }
+    el.scrollTop = top;
+  }
+
+  function renderAll() { renderRail(); renderMain(); renderInspector(); }
+
+  /* ── data ── */
+  let inflight = null;
+  async function tick(force) {
+    if (inflight) return;
+    inflight = fetch(`/api/state?baseline=${encodeURIComponent(S.baseline)}${force === true ? "&fresh" : ""}`, { cache: "no-store" })
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((d) => {
+        S.ok = true;
+        const sig = JSON.stringify([d.counts, d.modes, d.symbols, d.events?.[0]?.id, d.events?.[0]?.ts, d.weaves?.length, d.leases.length, d.leases[0]?.forkRepo, d.leases.map((l) => l.status + (l.score ?? "")).join("")]);
+        S.data = d;
+        if (force || sig !== S.sig) { S.sig = sig; renderAll(); } else renderRail();
+        $("live").classList.remove("off");
+        $("liveTxt").textContent = "live · " + time(d.generatedAt || Date.now());
+      })
+      .catch(() => { S.ok = false; $("live").classList.add("off"); $("liveTxt").textContent = "reconnecting"; })
+      .finally(() => { inflight = null; });
+  }
+
+  /* ── events ── */
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-baseline],[data-view],[data-sel],[data-action]");
+    if (!t) return;
+    if (t.dataset.baseline) { if (t.dataset.baseline !== S.baseline) { S.baseline = t.dataset.baseline; S.data = null; S.sel = null; S.sig = ""; syncUrl(); renderAll(); tick(); } }
+    else if (t.dataset.view) { S.view = t.dataset.view; syncUrl(); renderAll(); $("main").scrollTop = 0; }
+    else if (t.dataset.sel) { S.sel = S.sel === t.dataset.sel ? null : t.dataset.sel; renderMain(); renderInspector(); $("insp").scrollTop = 0; }
+    else if (t.dataset.action === "refresh") tick(true);
+  });
+  $("clearSel").onclick = () => { S.sel = null; renderMain(); renderInspector(); };
+  let ft;
+  $("find").addEventListener("input", (e) => { clearTimeout(ft); ft = setTimeout(() => { S.find = e.target.value.trim(); renderMain(); }, 120); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "/" && document.activeElement !== $("find")) { e.preventDefault(); $("find").focus(); }
+    else if (e.key === "Escape") { if (document.activeElement === $("find") && $("find").value) { $("find").value = ""; S.find = ""; renderMain(); } else if (S.sel) { S.sel = null; renderMain(); renderInspector(); } }
+  });
+
+  renderAll();
+  tick();
+  setInterval(() => tick(), 3000);
+})();
+</script>
+</body>
+</html>

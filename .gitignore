@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+.env
+worktrees/
+*.log
+SUBMISSION.md
+demo-env.ps1

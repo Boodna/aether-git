@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "aether-git",
+  "account_id": "525a4b86b8c583889ef94c828b518ac3",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  // Weave plans parse a few hundred files per request.
+  "limits": { "cpu_ms": 300000 },
+  // The bundled TypeScript parser probes for Node via `!process.browser`; force it onto its
+  // environment-free path (we only use ts.createSourceFile, never the compiler host).
+  "define": { "process.browser": "true" },
+  "artifacts": [{ "binding": "ARTIFACTS", "namespace": "default" }],
+  "durable_objects": {
+    "bindings": [{ "name": "SWARM_COORDINATOR", "class_name": "SwarmCoordinatorDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SwarmCoordinatorDO"] }],
+  // Artifacts `pushed` events arrive here via an event subscription (see README: setup).
+  "queues": {
+    "consumers": [{ "queue": "artifacts-repo-events", "max_batch_size": 10, "max_batch_timeout": 1 }]
+  }
+}
