@@ -88,6 +88,11 @@ just writes the files, commits and pushes, and the Worker verifies the new tip b
 
 ## Run it
 
+**Just want to look?** The live deployment's Mission Control dashboard is public and read-only:
+https://aether-git.boodna.workers.dev. It shows the real swarm, weave and 100,000-agent scale runs.
+
+To run your own copy end to end:
+
 **Requirements:** Node 20+, git, a Cloudflare account on **Workers Paid** with Artifacts enabled
 (the `default` namespace).
 
@@ -95,7 +100,8 @@ just writes the files, commits and pushes, and the Worker verifies the new tip b
 npm install
 npx wrangler login
 
-# 1. Point wrangler.jsonc "account_id" at your account, then create the queue and deploy
+# 1. Create the queue and deploy (uses the account you logged in with;
+#    with several accounts, set CLOUDFLARE_ACCOUNT_ID first)
 npx wrangler queues create artifacts-repo-events
 npx wrangler deploy
 
